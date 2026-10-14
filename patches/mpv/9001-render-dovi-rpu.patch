@@ -1,0 +1,57 @@
+diff -ruN a/include/mpv/render.h b/include/mpv/render.h
+--- a/include/mpv/render.h	2025-12-21 23:08:20
++++ b/include/mpv/render.h	2026-10-15 02:52:27
+@@ -422,6 +422,19 @@
+      * See MPV_RENDER_PARAM_SW_STRIDE for alignment requirements.
+      */
+     MPV_RENDER_PARAM_SW_POINTER = 20,
++    /**
++     * Dolby Vision RPU of the video frame drawn by the most recent
++     * mpv_render_context_render() call, as exported by FFmpeg in
++     * AV_FRAME_DATA_DOVI_RPU_BUFFER. Platforms that apply Dolby Vision display
++     * mapping themselves need it next to the frame mpv rendered.
++     *
++     * Valid for mpv_render_context_get_info().
++     * Type: mpv_byte_array*
++     *
++     * If the frame carries no RPU, data is NULL and size is 0. Otherwise data
++     * points to a copy owned by the caller, which must free it with mpv_free().
++     */
++    MPV_RENDER_PARAM_DOVI_RPU = 21,
+ } mpv_render_param_type;
+ 
+ /**
+diff -ruN a/video/out/vo_libmpv.c b/video/out/vo_libmpv.c
+--- a/video/out/vo_libmpv.c	2025-12-21 23:08:20
++++ b/video/out/vo_libmpv.c	2026-10-15 02:52:27
+@@ -7,6 +7,8 @@
+ #include <stdlib.h>
+ #include <string.h>
+ 
++#include <libavutil/frame.h>
++
+ #include "mpv_talloc.h"
+ #include "common/common.h"
+ #include "misc/bstr.h"
+@@ -474,6 +476,21 @@
+                 (frame->display_synced && !frame->redraw ?
+                     MPV_RENDER_FRAME_INFO_BLOCK_VSYNC : 0);
+             info->target_time = frame->pts;
++        }
++        res = 0;
++        break;
++    }
++    case MPV_RENDER_PARAM_DOVI_RPU: {
++        mpv_byte_array *rpu = param.data;
++        *rpu = (mpv_byte_array){0};
++        struct mp_image *image = ctx->cur_frame ? ctx->cur_frame->current : NULL;
++        for (int n = 0; image && n < image->num_ff_side_data; n++) {
++            struct mp_ff_side_data *side_data = &image->ff_side_data[n];
++            if (side_data->type != AV_FRAME_DATA_DOVI_RPU_BUFFER)
++                continue;
++            rpu->data = talloc_memdup(NULL, side_data->buf->data, side_data->buf->size);
++            rpu->size = side_data->buf->size;
++            break;
+         }
+         res = 0;
+         break;
