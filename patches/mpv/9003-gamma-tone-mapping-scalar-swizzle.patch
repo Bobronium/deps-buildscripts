@@ -1,0 +1,11 @@
+--- a/video/out/gpu/video_shaders.c	2026-10-15 05:32:23
++++ b/video/out/gpu/video_shaders.c	2026-10-15 05:59:02
+@@ -767,7 +767,7 @@
+     case TONE_MAPPING_GAMMA: {
+         float gamma = isnan(param) ? 1.8 : param;
+         GLSLF("const float cutoff = 0.05, gamma = 1.0/%f;\n", gamma);
+-        GLSL(float scale = pow(cutoff / sig_peak, gamma.x) / cutoff;)
++        GLSL(float scale = pow(cutoff / sig_peak, gamma) / cutoff;)
+         GLSLF("sig = mix(scale * sig,"
+               "          pow(sig / sig_peak, vec3(gamma)),"
+               "          %s(greaterThan(sig, vec3(cutoff))));\n",
